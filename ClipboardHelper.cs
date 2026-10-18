@@ -20,8 +20,9 @@ internal static class ClipboardHelper
                 IDataObject dataObject = new DataObject();
 
                 // 1. Memory stream of PNG format (widely supported by modern apps for alpha transparency)
-                using MemoryStream pngStream = new();
+                MemoryStream pngStream = new();
                 bitmap.Save(pngStream, ImageFormat.Png);
+                pngStream.Position = 0;
                 dataObject.SetData("PNG", false, pngStream);
 
                 // 2. Standard bitmap fallback
@@ -31,7 +32,7 @@ internal static class ClipboardHelper
                 byte[]? dib = CreateDibV5(bitmap);
                 if (dib != null)
                 {
-                    using MemoryStream dibStream = new(dib);
+                    MemoryStream dibStream = new(dib);
                     dataObject.SetData(DataFormats.Dib, false, dibStream);
                 }
 

@@ -44,239 +44,7 @@ internal static class WindowCaptureEngine
         Rectangle windowRect = GetWindowBounds(hWnd);
         if (windowRect.Width <= 0 || windowRect.Height <= 0) return null;
 
-        // Try authentic DWM drop-shadow extraction first
-        Bitmap? authenticImage = CaptureWithAuthenticShadow(hWnd, windowRect, shadowOffset);
-        if (authenticImage != null)
-        {
-            return authenticImage;
-        }
-
-        // Fallback: Capture standard window and apply synthetic soft shadow
         return CaptureWithSyntheticShadow(hWnd, windowRect, shadowOffset);
-    }
-
-    private static Bitmap? CaptureWithAuthenticShadow(nint targetHwnd, Rectangle windowRect, int shadowOffset)
-    {
-        Rectangle bounds = windowRect;
-        bounds.Inflate(shadowOffset, shadowOffset);
-
-        Rectangle virtualScreen = SystemInformation.VirtualScreen;
-        bounds.Intersect(virtualScreen);
-
-        if (bounds.Width <= 0 || bounds.Height <= 0) return null;
-
-        Bitmap? white1 = null;
-        Bitmap? black = null;
-        Bitmap? white2 = null;
-
-        try
-        {
-            using (Form bgForm = CreateLayeredBackgroundForm(bounds))
-            {
-                // Position background right behind target window
-                NativeMethods.SetWindowPos(
-                    bgForm.Handle,
-                    targetHwnd,
-                    bounds.X, bounds.Y, bounds.Width, bounds.Height,
-                    NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW);
-
-                // Pass 1: White background
-                bgForm.BackColor = Color.White;
-                FlushDwm();
-                white1 = CaptureScreenRegion(bounds);
-
-                // Pass 2: Black background
-                bgForm.BackColor = Color.Black;
-                FlushDwm();
-                black = CaptureScreenRegion(bounds);
-
-                // Pass 3: White background (validation pass)
-                bgForm.BackColor = Color.White;
-                FlushDwm();
-                white2 = CaptureScreenRegion(bounds);
-            }
-
-            if (white1 == null || black == null || white2 == null) return null;
-
-            Bitmap transparent;
-            if (AreImagesSimilar(white1, white2))
-            {
-                transparent = CalculateAlphaChannel(white1, black);
-            }
-            else
-            {
-                transparent = (Bitmap)white2.Clone();
-            }
-
-            return AutoCropTransparent(transparent);
-        }
-        catch
-        {
-            return null;
-        }
-        finally
-        {
-            white1?.Dispose();
-            black?.Dispose();
-            white2?.Dispose();
-        }
-    }
-
-    private static Form CreateLayeredBackgroundForm(Rectangle bounds)
-    {
-        Form form = new()
-        {
-            FormBorderStyle = FormBorderStyle.None,
-            StartPosition = FormStartPosition.Manual,
-            Bounds = bounds,
-            ShowInTaskbar = false,
-            TopMost = false,
-            Enabled = false
-        };
-
-        // Ensure WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW
-        form.HandleCreated += (_, _) =>
-        {
-            int exStyle = NativeMethods.GetWindowLong(form.Handle, NativeMethods.GWL_EXSTYLE);
-            NativeMethods.SetWindowLong(form.Handle, NativeMethods.GWL_EXSTYLE,
-                exStyle | NativeMethods.WS_EX_TOOLWINDOW | NativeMethods.WS_EX_NOACTIVATE);
-        };
-
-        form.Show();
-        return form;
-    }
-
-    private static void FlushDwm()
-    {
-        NativeMethods.DwmFlush();
-        Thread.Sleep(20);
-    }
-
-    private static Bitmap CaptureScreenRegion(Rectangle rect)
-    {
-        Bitmap bitmap = new(rect.Width, rect.Height, PixelFormat.Format32bppArgb);
-        using (Graphics g = Graphics.FromImage(bitmap))
-        {
-            g.CopyFromScreen(rect.X, rect.Y, 0, 0, rect.Size, CopyPixelOperation.SourceCopy);
-        }
-        return bitmap;
-    }
-
-    private static unsafe Bitmap CalculateAlphaChannel(Bitmap white, Bitmap black)
-    {
-        int width = white.Width;
-        int height = white.Height;
-
-        Bitmap result = new(width, height, PixelFormat.Format32bppArgb);
-
-        BitmapData whiteData = white.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
-        BitmapData blackData = black.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
-        BitmapData resultData = result.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
-
-        try
-        {
-            byte* pWhite = (byte*)whiteData.Scan0;
-            byte* pBlack = (byte*)blackData.Scan0;
-            byte* pResult = (byte*)resultData.Scan0;
-
-            int stride = whiteData.Stride;
-
-            for (int y = 0; y < height; y++)
-            {
-                byte* rowW = pWhite + (y * stride);
-                byte* rowB = pBlack + (y * stride);
-                byte* rowR = pResult + (y * stride);
-
-                for (int x = 0; x < width; x++)
-                {
-                    int i = x * 4;
-                    byte bW = rowW[i];
-                    byte gW = rowW[i + 1];
-                    byte rW = rowW[i + 2];
-
-                    byte bB = rowB[i];
-                    byte gB = rowB[i + 1];
-                    byte rB = rowB[i + 2];
-
-                    // Alpha extraction formula
-                    double alpha = (rB - rW + 255) / 255.0;
-
-                    if (alpha >= 0.999)
-                    {
-                        rowR[i] = bW;
-                        rowR[i + 1] = gW;
-                        rowR[i + 2] = rW;
-                        rowR[i + 3] = 255;
-                    }
-                    else if (alpha > 0.005)
-                    {
-                        rowR[i] = (byte)Math.Clamp(bB / alpha, 0, 255);
-                        rowR[i + 1] = (byte)Math.Clamp(gB / alpha, 0, 255);
-                        rowR[i + 2] = (byte)Math.Clamp(rB / alpha, 0, 255);
-                        rowR[i + 3] = (byte)Math.Clamp(255 * alpha, 0, 255);
-                    }
-                    else
-                    {
-                        rowR[i] = 0;
-                        rowR[i + 1] = 0;
-                        rowR[i + 2] = 0;
-                        rowR[i + 3] = 0;
-                    }
-                }
-            }
-        }
-        finally
-        {
-            white.UnlockBits(whiteData);
-            black.UnlockBits(blackData);
-            result.UnlockBits(resultData);
-        }
-
-        return result;
-    }
-
-    private static unsafe bool AreImagesSimilar(Bitmap a, Bitmap b)
-    {
-        if (a.Width != b.Width || a.Height != b.Height) return false;
-
-        BitmapData dataA = a.LockBits(new Rectangle(0, 0, a.Width, a.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
-        BitmapData dataB = b.LockBits(new Rectangle(0, 0, b.Width, b.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
-
-        int sampleStep = 8;
-        int diffCount = 0;
-        int checkedCount = 0;
-
-        try
-        {
-            byte* pA = (byte*)dataA.Scan0;
-            byte* pB = (byte*)dataB.Scan0;
-            int stride = dataA.Stride;
-
-            for (int y = 0; y < a.Height; y += sampleStep)
-            {
-                byte* rowA = pA + (y * stride);
-                byte* rowB = pB + (y * stride);
-
-                for (int x = 0; x < a.Width; x += sampleStep)
-                {
-                    int i = x * 4;
-                    checkedCount++;
-                    if (Math.Abs(rowA[i] - rowB[i]) > 8 ||
-                        Math.Abs(rowA[i + 1] - rowB[i + 1]) > 8 ||
-                        Math.Abs(rowA[i + 2] - rowB[i + 2]) > 8)
-                    {
-                        diffCount++;
-                    }
-                }
-            }
-
-            return diffCount <= (checkedCount * 0.05); // Under 5% difference
-        }
-        finally
-        {
-            a.UnlockBits(dataA);
-            b.UnlockBits(dataB);
-        }
     }
 
     private static unsafe Bitmap AutoCropTransparent(Bitmap src)
@@ -368,14 +136,19 @@ internal static class WindowCaptureEngine
             src.UnlockBits(data);
         }
 
-        // Add 6px breathing room padding if bounds allow
-        int cropWidth = right - left + 1;
-        int cropHeight = bottom - top + 1;
+        // Add breathing room margin around shadow
+        int margin = 8;
+        int cropX = Math.Max(0, left - margin);
+        int cropY = Math.Max(0, top - margin);
+        int cropR = Math.Min(width - 1, right + margin);
+        int cropB = Math.Min(height - 1, bottom + margin);
+        int cropWidth = cropR - cropX + 1;
+        int cropHeight = cropB - cropY + 1;
 
         if (cropWidth <= 0 || cropHeight <= 0) return src;
         if (cropWidth == width && cropHeight == height) return src;
 
-        Rectangle cropRect = new(left, top, cropWidth, cropHeight);
+        Rectangle cropRect = new(cropX, cropY, cropWidth, cropHeight);
         Bitmap cropped = new(cropWidth, cropHeight, PixelFormat.Format32bppArgb);
         using (Graphics g = Graphics.FromImage(cropped))
         {

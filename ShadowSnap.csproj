@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>ShadowSnap</AssemblyName>
+    <RootNamespace>ShadowSnap</RootNamespace>
+    <ApplicationIcon>assets\app.ico</ApplicationIcon>
+    <Product>ShadowSnap</Product>
+    <Title>ShadowSnap</Title>
+    <Description>macOS-style window screenshot utility for Windows with authentic drop shadows</Description>
+    <Company>dangphuc2470</Company>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="assets\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

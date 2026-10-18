@@ -2,7 +2,7 @@ using System.IO;
 using System.Media;
 using System.Runtime.InteropServices;
 
-namespace MacWindowSnap;
+namespace ShadowSnap;
 
 internal static class SoundHelper
 {

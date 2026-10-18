@@ -2,7 +2,7 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace MacWindowSnap;
+namespace ShadowSnap;
 
 internal static partial class NativeMethods
 {

@@ -4,11 +4,11 @@ using Microsoft.Win32;
 using Windows.Data.Xml.Dom;
 using Windows.UI.Notifications;
 
-namespace MacWindowSnap;
+namespace ShadowSnap;
 
 internal static class ToastHelper
 {
-    public const string AppId = "MacWindowSnap";
+    public const string AppId = "ShadowSnap";
 
     static ToastHelper()
     {
@@ -22,7 +22,7 @@ internal static class ToastHelper
             using RegistryKey? key = Registry.CurrentUser.CreateSubKey($@"Software\Classes\AppUserModelId\{AppId}");
             if (key != null)
             {
-                key.SetValue("DisplayName", "MacWindowSnap");
+                key.SetValue("DisplayName", "ShadowSnap");
                 string exePath = Process.GetCurrentProcess().MainModule?.FileName ?? "";
                 if (!string.IsNullOrEmpty(exePath))
                 {

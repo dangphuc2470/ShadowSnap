@@ -1,2 +1,2 @@
 @echo off
-start "" "%~dp0app\MacWindowSnap.exe"
+start "" "%~dp0app\ShadowSnap.exe"

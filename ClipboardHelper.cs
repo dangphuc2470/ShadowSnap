@@ -4,7 +4,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
-namespace MacWindowSnap;
+namespace ShadowSnap;
 
 internal static class ClipboardHelper
 {

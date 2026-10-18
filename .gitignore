@@ -23,3 +23,6 @@ app/
 ## OS Files
 Thumbs.db
 Desktop.ini
+
+## Raw generated images
+Gemini_*.png

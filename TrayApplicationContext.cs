@@ -5,7 +5,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Windows.Forms;
 
-namespace MacWindowSnap;
+namespace ShadowSnap;
 
 internal sealed class TrayApplicationContext : ApplicationContext
 {
@@ -23,7 +23,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _trayIcon = new NotifyIcon
         {
             Icon = CreateAppIcon(),
-            Text = "MacWindowSnap (Ctrl + Shift + A)",
+            Text = "ShadowSnap (Ctrl + Shift + A)",
             Visible = true
         };
 
@@ -100,7 +100,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         {
             _trayIcon.ShowBalloonTip(
                 4000,
-                "MacWindowSnap",
+                "ShadowSnap",
                 "Hotkey Ctrl + Shift + A may be in use by another application. You can still trigger capture via the system tray icon.",
                 ToolTipIcon.Warning);
         }
@@ -151,7 +151,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             else
             {
                 // Temporary file for hero toast preview
-                string tempDir = Path.Combine(Path.GetTempPath(), "MacWindowSnap");
+                string tempDir = Path.Combine(Path.GetTempPath(), "ShadowSnap");
                 Directory.CreateDirectory(tempDir);
                 savedPath = Path.Combine(tempDir, "temp_screenshot.png");
                 capturedImage.Save(savedPath, ImageFormat.Png);
@@ -193,6 +193,25 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private static Icon CreateAppIcon()
     {
+        try
+        {
+            string icoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets", "app.ico");
+            if (File.Exists(icoPath))
+            {
+                return new Icon(icoPath, 32, 32);
+            }
+
+            Icon? appIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            if (appIcon != null)
+            {
+                return new Icon(appIcon, 32, 32);
+            }
+        }
+        catch
+        {
+            // Fallback to generated icon
+        }
+
         using Bitmap bmp = new(32, 32, PixelFormat.Format32bppArgb);
         using (Graphics g = Graphics.FromImage(bmp))
         {

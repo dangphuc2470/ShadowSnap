@@ -1,11 +1,11 @@
 using System.Threading;
 using System.Windows.Forms;
 
-namespace MacWindowSnap;
+namespace ShadowSnap;
 
 internal static class Program
 {
-    private const string AppMutexName = "MacWindowSnap_SingleInstance_Mutex_2026";
+    private const string AppMutexName = "ShadowSnap_SingleInstance_Mutex_2026";
 
     [STAThread]
     private static void Main()
@@ -14,8 +14,8 @@ internal static class Program
         if (!createdNew)
         {
             MessageBox.Show(
-                "MacWindowSnap is already running in the system tray.\nPress Ctrl + Shift + A to capture a window.",
-                "MacWindowSnap",
+                "ShadowSnap is already running in the system tray.\nPress Ctrl + Shift + A to capture a window.",
+                "ShadowSnap",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
             return;
@@ -28,7 +28,7 @@ internal static class Program
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Application error: {ex.Message}", "MacWindowSnap", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"Application error: {ex.Message}", "ShadowSnap", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }

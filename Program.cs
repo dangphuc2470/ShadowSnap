@@ -14,7 +14,7 @@ internal static class Program
         if (!createdNew)
         {
             MessageBox.Show(
-                "MacWindowSnap đang chạy ngầm dưới khay hệ thống (System Tray) rồi nghen m!\nBấm Ctrl + Shift + A để chụp cửa sổ.",
+                "MacWindowSnap is already running in the system tray.\nPress Ctrl + Shift + A to capture a window.",
                 "MacWindowSnap",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
@@ -28,7 +28,7 @@ internal static class Program
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Lỗi ứng dụng: {ex.Message}", "MacWindowSnap", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"Application error: {ex.Message}", "MacWindowSnap", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }

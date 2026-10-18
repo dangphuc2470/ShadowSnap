@@ -101,16 +101,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _trayIcon.ShowBalloonTip(
                 4000,
                 "MacWindowSnap",
-                "Phím tắt Ctrl + Shift + A có thể đang bị trùng với ứng dụng khác. M vẫn có thể click vào icon khay để chụp nghen!",
+                "Hotkey Ctrl + Shift + A may be in use by another application. You can still trigger capture via the system tray icon.",
                 ToolTipIcon.Warning);
-        }
-        else
-        {
-            _trayIcon.ShowBalloonTip(
-                3000,
-                "MacWindowSnap",
-                "Đã kích hoạt! Bấm Ctrl + Shift + A để rê chuột chụp window có bóng đổ nghen m.",
-                ToolTipIcon.Info);
         }
     }
 
@@ -150,22 +142,27 @@ internal sealed class TrayApplicationContext : ApplicationContext
                 SoundHelper.PlayCameraShutter();
             }
 
-            // 3. Optional auto-save
+            // 3. Save to Screenshots folder
             string savedPath = string.Empty;
             if (_autoSave)
             {
                 savedPath = SaveToScreenshots(capturedImage, windowTitle);
             }
+            else
+            {
+                // Temporary file for hero toast preview
+                string tempDir = Path.Combine(Path.GetTempPath(), "MacWindowSnap");
+                Directory.CreateDirectory(tempDir);
+                savedPath = Path.Combine(tempDir, "temp_screenshot.png");
+                capturedImage.Save(savedPath, ImageFormat.Png);
+            }
 
-            string msg = string.IsNullOrEmpty(savedPath)
-                ? $"Đã chụp và lưu vào Clipboard ({capturedImage.Width} x {capturedImage.Height})!"
-                : $"Đã copy Clipboard & lưu file: {Path.GetFileName(savedPath)}";
-
-            _trayIcon.ShowBalloonTip(2000, "MacWindowSnap", msg, ToolTipIcon.Info);
+            // 4. Show Windows native Snipping Tool style toast notification
+            ToastHelper.ShowScreenshotToast(savedPath);
         }
         catch (Exception ex)
         {
-            _trayIcon.ShowBalloonTip(3000, "Lỗi chụp ảnh", ex.Message, ToolTipIcon.Error);
+            _trayIcon.ShowBalloonTip(3000, "Capture Error", ex.Message, ToolTipIcon.Error);
         }
     }
 

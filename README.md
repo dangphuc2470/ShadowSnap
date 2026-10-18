@@ -1,22 +1,54 @@
 # MacWindowSnap
 
-Ung dung chup cua so (Window Capture) mang phong cach macOS danh cho Windows, tich hop san tinh nang tu dong padding trong suot va boc tach bong do tu nhien (DWM Drop Shadow) cua Windows.
+A lightweight, macOS-style window capture utility for Windows featuring automatic transparent padding, interactive window detection, and authentic DWM drop shadow extraction.
 
-## Tinh nang chinh
-- Phim tat toan cuc: Binh thuong an o khay he thong (System Tray), bam `Ctrl + Shift + A` o bat ky dau de kich hoat.
-- Re chuot tu lua cua so (Hover Detection): Di chuyen chuot den dau se tu dong highlight vien xanh macOS va hien badge thong tin ung dung + kich thuoc pixel (W x H) den do.
-- Keo chuot chon dialog bat ky (Drag to Select): Neu gap cac dialog "ve chay" ben trong web/app (modal HTML, popup Figma...), chi can keo chuot bao quanh dialog do. App se tu dong bo tron goc (10px) va phu dai bong do mem 2 lop cua macOS cuc dep.
-- Chup co bong do goc (Authentic DWM Shadow): Khi click chuot vao cua so/dialog Windows, app su dung thuat toan boc tach alpha da lop cua DWM de giu nguyen ven dai bong mo tu nhien cua Windows (ho tro goc bo Windows 11).
-- Tu dong copy vao Clipboard: Luu dinh dang PNG 32-bit alpha va DIBV5 vao Clipboard de paste ngay vao Telegram, Zalo, Slack, Discord, Photoshop, Word... ma khong bi nen den.
-- Tu dong luu file: Mac dinh tu dong luu file PNG vao thu muc `Pictures/Screenshots/`.
-- Am thanh chup anh: Phat am thanh shutter nhe nhang bao hieu da chup xong.
+![Interactive Window Detection](assets/demo-hover.png)
 
-## Phim tat trong che do chup
-- Click chuot trai hoac Space / Enter: Chup cua so dang duoc highlight kem bong do goc.
-- Keo chuot trai: Ve khung chon bat ky dialog hoac vung nao de tu dong tao bong do macOS.
-- Chuot phai hoac Esc: Huy bo che do chup.
+![Captured Result with Authentic Shadow](assets/demo-result.png)
 
-## Khoi dong cung Windows
-De ung dung tu khoi dong khi bat may:
-1. Nhan to hop phim `Win + R`, go `shell:startup` roi Enter.
-2. Tao shortcut cua file `MacWindowSnap.exe` (tai thu muc `publish`) bo vao thu muc Startup vua mo.
+## Key Features
+
+- **Global Hotkey**: Runs silently in the system tray. Press `Ctrl + Shift + A` anytime to trigger window selection.
+- **Interactive Window Detection**: Move your cursor over any window to automatically highlight it with a rounded macOS-style accent border and a floating pill badge showing application title and pixel dimensions (`W x H`).
+- **Authentic DWM Drop Shadow**: Employs multi-pass background compositing and per-pixel alpha channel extraction to capture the genuine Windows DWM drop shadow with smooth corner rounding.
+- **Drag-to-Select Any Dialog or Region**: For in-app modals (such as web popups in Chrome, Electron apps, or Figma dialogs), click and drag to select the region. MacWindowSnap automatically applies smooth rounded corners and a dual-layer macOS soft drop shadow.
+- **Native Windows Toast Notification**: Displays a Windows 10/11 Snipping Tool-style toast notification with hero image preview, clipboard confirmation, and direct markup integration.
+- **Multi-Format Transparent Clipboard**: Copies both 32-bit PNG alpha stream and DIBV5 to the Windows Clipboard so you can paste directly into Telegram, Slack, Discord, Photoshop, Word, or web browsers without unwanted black backgrounds.
+- **Automatic Storage**: Saves screenshots to `Pictures/Screenshots` with clean timestamped filenames.
+- **Camera Shutter Sound**: Plays a subtle shutter click upon capture completion.
+
+## Controls in Capture Mode
+
+| Action | Control |
+| --- | --- |
+| Capture Highlighted Window | Left Click or `Space` / `Enter` |
+| Select Custom Dialog / Area | Left Click + Drag |
+| Cancel Capture Mode | Right Click or `Esc` |
+
+## System Tray Menu
+
+Right-click the MacWindowSnap icon in the system tray to access:
+- **Capture Window (`Ctrl + Shift + A`)**
+- **Auto-save to Pictures/Screenshots** (toggle)
+- **Play Camera Shutter Sound** (toggle)
+- **Open Screenshots Folder**
+- **Exit**
+
+## Running and Auto-Start
+
+### Quick Start
+Run `start.bat` or launch `app/MacWindowSnap.exe`.
+
+### Start with Windows
+To run MacWindowSnap automatically when Windows starts:
+1. Press `Win + R`, type `shell:startup`, and press `Enter`.
+2. Place a shortcut to `app/MacWindowSnap.exe` in the Startup folder (or run `create_shortcuts.ps1`).
+
+## Building from Source
+
+Requires .NET SDK 10 (or .NET 8 / 9 with Windows Desktop SDK):
+
+```bash
+dotnet build MacWindowSnap.csproj -c Release
+dotnet publish MacWindowSnap.csproj -c Release -r win-x64 --self-contained false -o app
+```

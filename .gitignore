@@ -8,6 +8,8 @@ x86/
 [Bb]in/
 [Oo]bj/
 app/
+dist/
+*.zip
 
 ## Visual Studio / Rider / IDE cache
 .vs/

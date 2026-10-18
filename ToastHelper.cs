@@ -77,7 +77,7 @@ internal static class ToastHelper
             link.SetIconLocation(iconPath, 0);
 
             IPropertyStore store = (IPropertyStore)link;
-            PropertyKey pkey = new(new Guid("9F4C2855-9F79-4BDE-9AE3-E1F60D02F2A1"), 5);
+            PropertyKey pkey = new(new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), 5);
             PropVariant pv = PropVariant.FromString(AppId);
             store.SetValue(ref pkey, ref pv);
             store.Commit();

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using Microsoft.Win32;
 using Windows.Data.Xml.Dom;
 using Windows.UI.Notifications;
 
@@ -7,7 +8,33 @@ namespace MacWindowSnap;
 
 internal static class ToastHelper
 {
-    private const string SnippingToolAppId = "Microsoft.ScreenSketch_8wekyb3d8bbwe!App";
+    public const string AppId = "MacWindowSnap";
+
+    static ToastHelper()
+    {
+        EnsureAppRegistered();
+    }
+
+    public static void EnsureAppRegistered()
+    {
+        try
+        {
+            using RegistryKey? key = Registry.CurrentUser.CreateSubKey($@"Software\Classes\AppUserModelId\{AppId}");
+            if (key != null)
+            {
+                key.SetValue("DisplayName", "MacWindowSnap");
+                string exePath = Process.GetCurrentProcess().MainModule?.FileName ?? "";
+                if (!string.IsNullOrEmpty(exePath))
+                {
+                    key.SetValue("IconUri", exePath);
+                }
+            }
+        }
+        catch
+        {
+            // Ignore registry write errors
+        }
+    }
 
     public static void ShowScreenshotToast(string imageFilePath)
     {
@@ -40,11 +67,10 @@ internal static class ToastHelper
 
             ToastNotification toast = new(xmlDoc);
 
-            toast.Activated += (_, args) =>
+            toast.Activated += (_, _) =>
             {
                 try
                 {
-                    // Open image in default editor / viewer
                     Process.Start(new ProcessStartInfo(imageFilePath)
                     {
                         UseShellExecute = true
@@ -52,20 +78,16 @@ internal static class ToastHelper
                 }
                 catch
                 {
-                    // Fallback to revealing file in Explorer
                     Process.Start("explorer.exe", $"/select,\"{imageFilePath}\"");
                 }
             };
 
-            // Try creating toast with Snipping Tool identity for 100% authentic Snipping Tool look
             try
             {
-                ToastNotificationManager.CreateToastNotifier(SnippingToolAppId).Show(toast);
-                return;
+                ToastNotificationManager.CreateToastNotifier(AppId).Show(toast);
             }
             catch
             {
-                // Fallback to default notifier if Snipping Tool app ID is not registered
                 ToastNotificationManager.CreateToastNotifier().Show(toast);
             }
         }

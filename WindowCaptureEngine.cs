@@ -224,11 +224,15 @@ internal static class WindowCaptureEngine
                     byte val = blurred[offset + x];
                     if (val > 0)
                     {
-                        int px = x * 4;
-                        row[px + 0] = 0;
-                        row[px + 1] = 0;
-                        row[px + 2] = 0;
-                        row[px + 3] = (byte)(val * maxOpacity);
+                        byte a = (byte)(val * maxOpacity);
+                        if (a >= 3)
+                        {
+                            int px = x * 4;
+                            row[px + 0] = 0;
+                            row[px + 1] = 0;
+                            row[px + 2] = 0;
+                            row[px + 3] = a;
+                        }
                     }
                 }
             }
@@ -242,14 +246,19 @@ internal static class WindowCaptureEngine
             g.InterpolationMode = InterpolationMode.HighQualityBicubic;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
-            Rectangle destRect = new(padding, padding, sourceBitmap.Width, sourceBitmap.Height);
+            // Inset by 1px to strip off any dirty background border or pixel leakage from behind window
+            Rectangle srcCrop = (sourceBitmap.Width > 4 && sourceBitmap.Height > 4)
+                ? new(1, 1, sourceBitmap.Width - 2, sourceBitmap.Height - 2)
+                : new(0, 0, sourceBitmap.Width, sourceBitmap.Height);
+
+            Rectangle destRect = new(padding, padding, srcCrop.Width, srcCrop.Height);
             using GraphicsPath clipPath = CreateRoundedRectanglePath(destRect, cornerRadius);
             g.SetClip(clipPath);
-            g.DrawImage(sourceBitmap, destRect);
+            g.DrawImage(sourceBitmap, destRect, srcCrop, GraphicsUnit.Pixel);
             g.ResetClip();
 
             // Subtle Windows 11 window border (1px light neutral stroke)
-            using Pen rimPen = new(Color.FromArgb(28, 0, 0, 0), 1f);
+            using Pen rimPen = new(Color.FromArgb(45, 0, 0, 0), 1f);
             g.DrawPath(rimPen, clipPath);
         }
 
@@ -326,7 +335,7 @@ internal static class WindowCaptureEngine
             g.CopyFromScreen(windowRect.X, windowRect.Y, 0, 0, windowRect.Size, CopyPixelOperation.SourceCopy);
         }
 
-        return CreateImageWithMacShadow(windowBitmap, shadowOffset, 10);
+        return CreateImageWithMacShadow(windowBitmap, shadowOffset, 8);
     }
 
     public static GraphicsPath CreateRoundedRectanglePath(Rectangle rect, int cornerRadius)

@@ -12,6 +12,15 @@ internal static partial class NativeMethods
     public const int MOD_WIN = 0x0008;
     public const int MOD_NOREPEAT = 0x4000;
 
+    [DllImport("shell32.dll", SetLastError = true)]
+    public static extern int SetCurrentProcessExplicitAppUserModelID([MarshalAs(UnmanagedType.LPWStr)] string AppID);
+
+    [DllImport("shell32.dll")]
+    public static extern void SHChangeNotify(int wEventId, uint uFlags, IntPtr dwItem1, IntPtr dwItem2);
+
+    public const int SHCNE_ASSOCCHANGED = 0x08000000;
+    public const uint SHCNF_IDLIST = 0x0000;
+
     public const int WM_HOTKEY = 0x0312;
     public const int WM_NCHITTEST = 0x0084;
     public const int HTTRANSPARENT = -1;

@@ -23,25 +23,25 @@ internal static class ToastHelper
     {
         try
         {
+            NativeMethods.SetCurrentProcessExplicitAppUserModelID(AppId);
+
             using RegistryKey? key = Registry.CurrentUser.CreateSubKey($@"Software\Classes\AppUserModelId\{AppId}");
             if (key != null)
             {
                 key.SetValue("DisplayName", "ShadowSnap");
                 string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                string logoPath = Path.Combine(baseDir, "assets", "logo.png");
-                if (File.Exists(logoPath))
+                string icoPath = Path.Combine(baseDir, "assets", "app.ico");
+                string exePath = Process.GetCurrentProcess().MainModule?.FileName ?? Path.Combine(baseDir, "ShadowSnap.exe");
+
+                if (File.Exists(icoPath))
                 {
-                    key.SetValue("IconUri", logoPath);
+                    key.SetValue("IconUri", icoPath);
                 }
-                else
+                else if (File.Exists(exePath))
                 {
-                    string icoPath = Path.Combine(baseDir, "assets", "app.ico");
-                    if (File.Exists(icoPath))
-                    {
-                        key.SetValue("IconUri", icoPath);
-                    }
+                    key.SetValue("IconUri", $"{exePath},0");
                 }
-                key.SetValue("IconBackgroundColor", "0");
+
                 key.SetValue("ShowInSettings", 1, RegistryValueKind.DWord);
             }
         }
@@ -67,7 +67,7 @@ internal static class ToastHelper
             string iconPath = Path.Combine(baseDir, "assets", "app.ico");
             if (!File.Exists(iconPath))
             {
-                iconPath = exePath;
+                iconPath = $"{exePath},0";
             }
 
             IShellLinkW link = (IShellLinkW)new CShellLink();
@@ -84,6 +84,8 @@ internal static class ToastHelper
 
             IPersistFile persistFile = (IPersistFile)link;
             persistFile.Save(shortcutPath, true);
+
+            NativeMethods.SHChangeNotify(NativeMethods.SHCNE_ASSOCCHANGED, NativeMethods.SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
         }
         catch
         {
@@ -101,20 +103,11 @@ internal static class ToastHelper
             }
 
             string fileUri = new Uri(imageFilePath).AbsoluteUri;
-            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            string logoPath = Path.Combine(baseDir, "assets", "logo.png");
-            string appLogoXml = string.Empty;
-            if (File.Exists(logoPath))
-            {
-                string logoUri = new Uri(logoPath).AbsoluteUri;
-                appLogoXml = $"""<image placement="appLogoOverride" hint-crop="none" src="{logoUri}"/>""";
-            }
 
             string toastXmlString = $"""
             <toast duration="short">
               <visual>
                 <binding template="ToastGeneric">
-                  {appLogoXml}
                   <image placement="hero" src="{fileUri}"/>
                   <text>Screenshot copied to clipboard</text>
                   <text>Automatically saved to screenshots folder.</text>

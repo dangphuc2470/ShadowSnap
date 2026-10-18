@@ -8,7 +8,7 @@ namespace ShadowSnap;
 
 internal static class WindowCaptureEngine
 {
-    private const int DefaultShadowOffset = 70;
+    private const int DefaultShadowOffset = 32;
 
     public static Rectangle GetWindowBounds(nint hWnd)
     {
@@ -160,13 +160,82 @@ internal static class WindowCaptureEngine
         return cropped;
     }
 
-    public static Bitmap CreateImageWithMacShadow(Bitmap sourceBitmap, int shadowOffset = DefaultShadowOffset, int cornerRadius = 10)
+    public static Bitmap CreateImageWithMacShadow(Bitmap sourceBitmap, int shadowOffset = DefaultShadowOffset, int cornerRadius = 9)
     {
         int padding = shadowOffset;
         int finalWidth = sourceBitmap.Width + (padding * 2);
         int finalHeight = sourceBitmap.Height + (padding * 2);
 
+        // 1. Create a 1-channel alpha mask for the shadow
+        byte[] mask = new byte[finalWidth * finalHeight];
+
+        using (Bitmap maskBmp = new(finalWidth, finalHeight, PixelFormat.Format32bppArgb))
+        {
+            using (Graphics g = Graphics.FromImage(maskBmp))
+            {
+                g.Clear(Color.Transparent);
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+
+                // Windows 11 light source has a slight top-down angle, offset shadow down by 4px
+                Rectangle shadowBaseRect = new(padding, padding + 4, sourceBitmap.Width, sourceBitmap.Height);
+                using GraphicsPath path = CreateRoundedRectanglePath(shadowBaseRect, cornerRadius);
+                using SolidBrush brush = new(Color.Black);
+                g.FillPath(brush, path);
+            }
+
+            BitmapData maskData = maskBmp.LockBits(new Rectangle(0, 0, finalWidth, finalHeight), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+            unsafe
+            {
+                byte* p = (byte*)maskData.Scan0;
+                int stride = maskData.Stride;
+                for (int y = 0; y < finalHeight; y++)
+                {
+                    byte* row = p + (y * stride);
+                    int offset = y * finalWidth;
+                    for (int x = 0; x < finalWidth; x++)
+                    {
+                        mask[offset + x] = row[(x * 4) + 3];
+                    }
+                }
+            }
+            maskBmp.UnlockBits(maskData);
+        }
+
+        // 2. Perform 3-pass fast horizontal + vertical box blur (Gaussian blur approximation)
+        byte[] blurred = FastBoxBlur(mask, finalWidth, finalHeight, r: 16, passes: 3);
+
+        // 3. Render blurred shadow onto output bitmap
         Bitmap output = new(finalWidth, finalHeight, PixelFormat.Format32bppArgb);
+        BitmapData outData = output.LockBits(new Rectangle(0, 0, finalWidth, finalHeight), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+
+        // Authentic Windows 11 shadow peak opacity is ~28%
+        const double maxOpacity = 0.28;
+
+        unsafe
+        {
+            byte* pOut = (byte*)outData.Scan0;
+            int stride = outData.Stride;
+            for (int y = 0; y < finalHeight; y++)
+            {
+                byte* row = pOut + (y * stride);
+                int offset = y * finalWidth;
+                for (int x = 0; x < finalWidth; x++)
+                {
+                    byte val = blurred[offset + x];
+                    if (val > 0)
+                    {
+                        int px = x * 4;
+                        row[px + 0] = 0;
+                        row[px + 1] = 0;
+                        row[px + 2] = 0;
+                        row[px + 3] = (byte)(val * maxOpacity);
+                    }
+                }
+            }
+        }
+        output.UnlockBits(outData);
+
+        // 4. Draw source window with rounded corners and subtle Windows 11 border
         using (Graphics g = Graphics.FromImage(output))
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -174,61 +243,79 @@ internal static class WindowCaptureEngine
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
             Rectangle destRect = new(padding, padding, sourceBitmap.Width, sourceBitmap.Height);
+            using GraphicsPath clipPath = CreateRoundedRectanglePath(destRect, cornerRadius);
+            g.SetClip(clipPath);
+            g.DrawImage(sourceBitmap, destRect);
+            g.ResetClip();
 
-            // Layer 1: Ambient soft blur shadow (wide spread, low opacity)
-            int ambientLayers = 24;
-            for (int i = ambientLayers; i >= 1; i--)
-            {
-                double factor = (double)i / ambientLayers;
-                int spread = (int)(padding * 0.85 * factor);
-                int alpha = (int)(20 * (1.0 - factor));
-                if (alpha <= 0) continue;
-
-                Rectangle layerRect = new(
-                    destRect.X - spread,
-                    destRect.Y - spread + (int)(6 * factor),
-                    destRect.Width + (spread * 2),
-                    destRect.Height + (spread * 2));
-
-                using GraphicsPath path = CreateRoundedRectanglePath(layerRect, cornerRadius + (int)(spread * 0.5));
-                using SolidBrush brush = new(Color.FromArgb(alpha, 0, 0, 0));
-                g.FillPath(brush, path);
-            }
-
-            // Layer 2: Key directional shadow (closer and darker, slightly offset downwards)
-            int keyLayers = 16;
-            for (int i = keyLayers; i >= 1; i--)
-            {
-                double factor = (double)i / keyLayers;
-                int spread = (int)(padding * 0.35 * factor);
-                int alpha = (int)(36 * (1.0 - factor));
-                if (alpha <= 0) continue;
-
-                Rectangle layerRect = new(
-                    destRect.X - spread,
-                    destRect.Y - spread + (int)(10 * factor),
-                    destRect.Width + (spread * 2),
-                    destRect.Height + (spread * 2));
-
-                using GraphicsPath path = CreateRoundedRectanglePath(layerRect, cornerRadius + (int)(spread * 0.3));
-                using SolidBrush brush = new(Color.FromArgb(alpha, 0, 0, 0));
-                g.FillPath(brush, path);
-            }
-
-            // Clip and draw source image with rounded corners
-            using (GraphicsPath clipPath = CreateRoundedRectanglePath(destRect, cornerRadius))
-            {
-                g.SetClip(clipPath);
-                g.DrawImage(sourceBitmap, destRect);
-                g.ResetClip();
-
-                // Subtle macOS-style rim stroke around the window
-                using Pen rimPen = new(Color.FromArgb(35, 0, 0, 0), 1f);
-                g.DrawPath(rimPen, clipPath);
-            }
+            // Subtle Windows 11 window border (1px light neutral stroke)
+            using Pen rimPen = new(Color.FromArgb(28, 0, 0, 0), 1f);
+            g.DrawPath(rimPen, clipPath);
         }
 
         return AutoCropTransparent(output);
+    }
+
+    private static byte[] FastBoxBlur(byte[] src, int w, int h, int r, int passes)
+    {
+        byte[] current = (byte[])src.Clone();
+        byte[] buffer = new byte[w * h];
+
+        for (int p = 0; p < passes; p++)
+        {
+            // Horizontal pass
+            for (int y = 0; y < h; y++)
+            {
+                int row = y * w;
+                int sum = 0;
+                int count = 0;
+
+                for (int x = -r; x < w; x++)
+                {
+                    if (x + r < w)
+                    {
+                        sum += current[row + x + r];
+                        count++;
+                    }
+                    if (x - r - 1 >= 0)
+                    {
+                        sum -= current[row + x - r - 1];
+                        count--;
+                    }
+                    if (x >= 0)
+                    {
+                        buffer[row + x] = (byte)(sum / count);
+                    }
+                }
+            }
+
+            // Vertical pass
+            for (int x = 0; x < w; x++)
+            {
+                int sum = 0;
+                int count = 0;
+
+                for (int y = -r; y < h; y++)
+                {
+                    if (y + r < h)
+                    {
+                        sum += buffer[(y + r) * w + x];
+                        count++;
+                    }
+                    if (y - r - 1 >= 0)
+                    {
+                        sum -= buffer[(y - r - 1) * w + x];
+                        count--;
+                    }
+                    if (y >= 0)
+                    {
+                        current[y * w + x] = (byte)(sum / count);
+                    }
+                }
+            }
+        }
+
+        return current;
     }
 
     private static Bitmap CaptureWithSyntheticShadow(nint hWnd, Rectangle windowRect, int shadowOffset)

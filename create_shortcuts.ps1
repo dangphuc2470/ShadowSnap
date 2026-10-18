@@ -1,7 +1,8 @@
 $WshShell = New-Object -ComObject WScript.Shell
-$targetExe = "D:\Project\MacWindowSnap\app\ShadowSnap.exe"
-$workingDir = "D:\Project\MacWindowSnap\app"
-$iconPath = "D:\Project\MacWindowSnap\app\assets\app.ico"
+$root = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Definition }
+$targetExe = Join-Path $root "app\ShadowSnap.exe"
+$workingDir = Join-Path $root "app"
+$iconPath = Join-Path $root "app\assets\app.ico"
 
 # 1. Desktop shortcut
 $desktopShortcutPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "ShadowSnap.lnk"

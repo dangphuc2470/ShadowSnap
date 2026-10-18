@@ -110,7 +110,7 @@ ShadowSnap.exe --mcp
 {
   "mcpServers": {
     "shadowsnap": {
-      "command": "D:\\Project\\MacWindowSnap\\app\\ShadowSnap.exe",
+      "command": "C:\\path\\to\\ShadowSnap\\app\\ShadowSnap.exe",
       "args": ["--mcp"]
     }
   }
@@ -123,7 +123,7 @@ ShadowSnap.exe --mcp
 {
   "mcpServers": {
     "shadowsnap": {
-      "command": "D:\\Project\\MacWindowSnap\\app\\ShadowSnap.exe",
+      "command": "C:\\path\\to\\ShadowSnap\\app\\ShadowSnap.exe",
       "args": ["--mcp"]
     }
   }

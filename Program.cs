@@ -10,6 +10,12 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        if (args.Length > 0 && (args[0] == "--mcp" || args[0] == "mcp"))
+        {
+            McpServer.Run();
+            return;
+        }
+
         // Explicitly declare process AUMID so Windows Notification Center displays the app icon in the header
         NativeMethods.SetCurrentProcessExplicitAppUserModelID(ToastHelper.AppId);
         ToastHelper.EnsureAppRegistered();

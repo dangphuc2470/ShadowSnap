@@ -22,13 +22,16 @@
 
 Captured images are copied directly to your clipboard in dual formats (PNG alpha stream and DIBV5) so they paste seamlessly into Telegram, Slack, Discord, Photoshop, Word, or web browsers without ugly black rectangular backgrounds.
 
+### Window Detection
 <p align="center">
   <img src="assets/demo-hover.png" alt="Interactive Window Detection" width="85%" />
 </p>
 
+### Final Output
 <p align="center">
   <img src="assets/demo-result.png" alt="Captured Result with Authentic Shadow" width="85%" />
 </p>
+
 
 ---
 
@@ -78,6 +81,54 @@ Right-click the ShadowSnap icon in the system tray to access:
 To have ShadowSnap launch automatically on system startup:
 - Run `powershell -ExecutionPolicy Bypass -File create_shortcuts.ps1` to create shortcuts on both your Desktop and Windows Startup directory.
 - Alternatively, copy a shortcut of `app/ShadowSnap.exe` into `shell:startup`.
+
+---
+
+## Model Context Protocol (MCP) Support
+
+ShadowSnap includes built-in support for the **Model Context Protocol (MCP)** via standard I/O (JSON-RPC 2.0). AI agents and LLMs (such as Claude Desktop, Cursor, or Antigravity) can autonomously inspect desktop windows and capture pixel-perfect transparent window screenshots.
+
+### Running Headless MCP Server
+
+```bash
+ShadowSnap.exe --mcp
+```
+
+### Available MCP Tools
+
+| Tool | Description | Key Arguments |
+| --- | --- | --- |
+| `list_windows` | Lists all visible top-level windows with HWND, title, process name, and bounds. | `filter` (optional string), `include_empty_titles` (boolean) |
+| `capture_window` | Captures a window with transparent padding and authentic DWM drop shadow. | `window_handle` (int), `title_filter` (string), `process_name` (string), `shadow_offset` (int), `output_path` (string), `copy_to_clipboard` (bool), `return_base64` (bool) |
+| `capture_active_window` | Captures the currently active foreground window with authentic drop shadow. | `shadow_offset` (int), `output_path` (string), `copy_to_clipboard` (bool), `return_base64` (bool) |
+
+### MCP Client Configuration
+
+#### Claude Desktop (`claude_desktop_config.json`)
+
+```json
+{
+  "mcpServers": {
+    "shadowsnap": {
+      "command": "D:\\Project\\MacWindowSnap\\app\\ShadowSnap.exe",
+      "args": ["--mcp"]
+    }
+  }
+}
+```
+
+#### Antigravity IDE / Cursor
+
+```json
+{
+  "mcpServers": {
+    "shadowsnap": {
+      "command": "D:\\Project\\MacWindowSnap\\app\\ShadowSnap.exe",
+      "args": ["--mcp"]
+    }
+  }
+}
+```
 
 ---
 

@@ -184,4 +184,34 @@ internal static partial class NativeMethods
     public const uint SND_ASYNC = 0x0001;
     public const uint SND_MEMORY = 0x0004;
     public const uint SND_NODEFAULT = 0x0002;
+
+    public const int ATTACH_PARENT_PROCESS = -1;
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool AttachConsole(int dwProcessId);
+
+    [DllImport("user32.dll")]
+    public static extern nint GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    public static extern bool IsWindow(nint hWnd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern uint GetWindowThreadProcessId(nint hWnd, out uint lpdwProcessId);
+
+    public delegate bool EnumWindowsProc(nint hWnd, nint lParam);
+
+    [DllImport("user32.dll")]
+    public static extern bool EnumWindows(EnumWindowsProc enumProc, nint lParam);
+
+    public const uint DESKTOP_ALL = 0x01FF;
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+    public static extern nint OpenDesktop(string lpszDesktop, uint dwFlags, bool fInherit, uint dwDesiredAccess);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool SetThreadDesktop(nint hDesktop);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool CloseDesktop(nint hDesktop);
 }

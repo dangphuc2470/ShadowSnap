@@ -26,7 +26,17 @@ internal sealed class OverlayForm : Form
     public OverlayForm(Action<Bitmap, string> onCaptureCompleted)
     {
         _onCaptureCompleted = onCaptureCompleted;
-        _virtualBounds = SystemInformation.VirtualScreen;
+
+        int vx = NativeMethods.GetSystemMetrics(NativeMethods.SM_XVIRTUALSCREEN);
+        int vy = NativeMethods.GetSystemMetrics(NativeMethods.SM_YVIRTUALSCREEN);
+        int vw = NativeMethods.GetSystemMetrics(NativeMethods.SM_CXVIRTUALSCREEN);
+        int vh = NativeMethods.GetSystemMetrics(NativeMethods.SM_CYVIRTUALSCREEN);
+
+        _virtualBounds = new Rectangle(vx, vy, vw, vh);
+        if (_virtualBounds.Width <= 0 || _virtualBounds.Height <= 0)
+        {
+            _virtualBounds = SystemInformation.VirtualScreen;
+        }
 
         // Capture frozen desktop snapshot before displaying overlay
         _screenSnapshot = new Bitmap(_virtualBounds.Width, _virtualBounds.Height, PixelFormat.Format32bppArgb);
@@ -66,6 +76,12 @@ internal sealed class OverlayForm : Form
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
+
+        // Ensure overlay window physically covers the exact virtual desktop dimensions
+        NativeMethods.SetWindowPos(Handle, NativeMethods.HWND_TOPMOST,
+            _virtualBounds.X, _virtualBounds.Y, _virtualBounds.Width, _virtualBounds.Height,
+            NativeMethods.SWP_SHOWWINDOW);
+
         _detectTimer.Start();
         DetectHoveredWindow();
     }
@@ -172,8 +188,11 @@ internal sealed class OverlayForm : Form
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-        // 1. Draw static desktop background
-        g.DrawImageUnscaled(_screenSnapshot, 0, 0);
+        // 1. Draw static desktop background (1:1 pixel mapped across full client bounds)
+        g.DrawImage(_screenSnapshot,
+            new Rectangle(0, 0, ClientRectangle.Width, ClientRectangle.Height),
+            0, 0, _screenSnapshot.Width, _screenSnapshot.Height,
+            GraphicsUnit.Pixel);
 
         if (_isDragging && _dragSelectionRect.Width > 0 && _dragSelectionRect.Height > 0)
         {
@@ -452,8 +471,8 @@ internal sealed class OverlayForm : Form
             g.DrawImage(_screenSnapshot, 0, 0, boundsInSnapshot, GraphicsUnit.Pixel);
         }
 
-        // Apply macOS soft multi-layer shadow with 10px rounded corners
-        Bitmap finalWithShadow = WindowCaptureEngine.CreateImageWithMacShadow(cropped, shadowOffset: 70, cornerRadius: 10);
+        // Apply Windows 11 DWM soft elevation shadow with 8px rounded corners
+        Bitmap finalWithShadow = WindowCaptureEngine.CreateImageWithMacShadow(cropped, shadowOffset: 32, cornerRadius: 8);
         _onCaptureCompleted(finalWithShadow, "Custom Dialog");
         Close();
     }

@@ -14,6 +14,8 @@
     <Title>ShadowSnap</Title>
     <Description>macOS-style window screenshot utility for Windows with authentic drop shadows</Description>
     <Company>dangphuc2470</Company>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>

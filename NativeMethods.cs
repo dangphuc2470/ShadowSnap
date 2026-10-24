@@ -51,6 +51,16 @@ internal static partial class NativeMethods
 
     public const uint SRCCOPY = 0x00CC0020;
 
+    public const int SM_XVIRTUALSCREEN = 76;
+    public const int SM_YVIRTUALSCREEN = 77;
+    public const int SM_CXVIRTUALSCREEN = 78;
+    public const int SM_CYVIRTUALSCREEN = 79;
+
+    public static readonly nint HWND_TOPMOST = new(-1);
+
+    [DllImport("user32.dll")]
+    public static extern int GetSystemMetrics(int nIndex);
+
     [StructLayout(LayoutKind.Sequential)]
     public struct POINT
     {
